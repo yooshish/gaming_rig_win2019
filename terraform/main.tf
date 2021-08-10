@@ -37,13 +37,8 @@ resource "aws_internet_gateway" "gaming_rig_igw" {
           }"
 }
 
-resource "aws_route_table" "gaming_rig_route_table" {
-  vpc_id = aws_vpc.gaming_rig_vpc.id
-
-  route {
-      cidr_block = "10.0.0.0/24"
-  }
-  
+resource "aws_default_route_table" "gaming_rig_route_table" {
+  default_route_table_id = aws_vpc.gaming_rig_vpc.default_route_table_id
   route {
       cidr_block = "0.0.0.0/0"
       gateway_id = "${aws_internet_gateway.gaming_rig_igw.id}"
@@ -71,9 +66,8 @@ resource "aws_subnet" "public_gaming_rig_subnet" {
 
 resource "aws_route_table_association" "route_table_assoc" {
   subnet_id      = aws_subnet.public_gaming_rig_subnet.id
-  route_table_id = aws_route_table.gaming_rig_route_table.id
+  route_table_id = aws_default_route_table.gaming_rig_route_table.id
 }
-
 
 ##
 ## 2. Setup compute: create a new EC2 (the gaming rig) on a Windows Server 2019 and associate
@@ -124,10 +118,10 @@ resource "local_file" "private_key" {
 
 }
 resource "aws_key_pair" "key_pair" {
-  key_name   = "yoosh-key"       # Create a "my-key" to AWS!!
+  key_name   = "yoosh-key"       # Create a "my-key" to AWS
   public_key = tls_private_key.tls_key.public_key_openssh
 
-  # provisioner "local-exec" { # Create a "my-key.pem" to your computer!!
+  # provisioner "local-exec" { # Create a "my-key.pem" to your computer
   #   command = "echo '${tls_private_key.private_key.private_key_pem}' > ./my-key.pem"
   # }
 }
@@ -139,8 +133,8 @@ resource "aws_instance" "gaming_rig" {
   associate_public_ip_address = true
 
   root_block_device {
-    delete_on_termination = true
-    encrypted             = true
+    delete_on_termination = true # This may need to change if we snapshot
+    encrypted             = true # Explore how this affects performance
     volume_size           = var.rig_disk_size
   }
 
